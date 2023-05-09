@@ -13,7 +13,37 @@
     <!--Page structure-->
     <body>
         <div class="center">
-            <canvas id="gl-canvas">Unsupported HTML tag: canvas</canvas>
+            <canvas id="gl-canvas" style="width: 600px; height: 600px;">Unsupported HTML tag: canvas</canvas>
+			<div id="start" class="pointer">
+				<p>Click to start a game</p>
+			</div>
+			<div id="level_selection">
+				<div class="title">
+					<p>Levels</p>
+				</div>
+				<div class="levels">
+					<div class="level level--1 pointer">
+						<p>Level 1</p>
+					</div>
+					<div class="level level--2 pointer">
+						<p>Level 2</p>
+					</div>
+					<div class="level level--3 pointer">
+						<p>Level 3</p>
+					</div>
+				</div>
+			</div>
+			<div id="pause" class="pointer">
+				<p>Click to resume</p>
+			</div>
+			<div id="game_over" class="pointer">
+				<p>GAME OVER</p>
+				<p>Click to continue</p>
+			</div>
+			<div id="game_won" class="pointer">
+				<p>LEVEL COMPLETED</p>
+				<p>Click to continue</p>
+			</div>
         </div>
     </body>
 </html>

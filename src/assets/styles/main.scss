@@ -10,7 +10,46 @@ html, body {
     display: flex;
     justify-content: center;
     align-items: center;
+	font-family: 'Impact', 'serif';
 	#gl-canvas {
 		border: 1px solid black;
+	}
+	#start, #level_selection, #pause, #game_over, #game_won {
+		position: absolute;
+		color: white;
+		background-color: black;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-direction: column;
+		text-align: center;
+		*:not(p) {
+			width: 100%;
+		}
+		& > p:first-child, .title p {
+			font-size: 3em;
+			align-items: center;
+			flex-direction: column;
+		}
+		.levels {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			flex-direction: column;
+		}
+		& > p:not(:first-child), .level {
+			font-size: 2em;
+		}
+		
+	}
+	.level:hover {
+		background-color: white;
+		color: black;
+	}
+	#pause {
+		background-color: rgba(0, 0, 0, 0.7);	
+	}
+	.pointer {
+		cursor: pointer;
 	}
 }

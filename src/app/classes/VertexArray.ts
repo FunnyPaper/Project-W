@@ -1,4 +1,4 @@
-import {gl} from './WebGL2';
+import {context as gl} from './WebGL2';
 import {Buffer} from './Buffer';
 
 export class VertexArray {

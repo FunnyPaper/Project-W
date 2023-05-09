@@ -1,8 +1,9 @@
-import {gl} from './WebGL2';
+import {SpriteAtlas} from './SpriteAtlas';
+import {context as gl} from './WebGL2';
 import {ShaderStage} from './ShaderStage';
 import {Shader} from './Shader';
 import {Texture2D} from './Texture2D';
-import {Buffer} from './Buffer';
+import {Buffer, IBufferDataInfo} from './Buffer';
 import {VertexArray} from './VertexArray';
 
 export class ResourceManager {
@@ -10,11 +11,13 @@ export class ResourceManager {
 	// fields
 	//
 
-	static #shaderStagesMap: Map<string, ShaderStage> = new Map();
-	static #shadersMap: Map<string, Shader> = new Map();
-	static #texturesMap: Map<string, Texture2D> = new Map();
-	static #buffersMap: Map<string, Buffer> = new Map();
-	static #vertexArraysMap: Map<string, VertexArray> = new Map();
+	protected static shaderStagesMap: Map<string, ShaderStage> = new Map();
+	protected static shadersMap: Map<string, Shader> = new Map();
+	protected static texturesMap: Map<string, Texture2D> = new Map();
+	protected static imagesMap: Map<string, HTMLImageElement> = new Map();
+	protected static spriteAtlasesMap: Map<string, SpriteAtlas> = new Map();
+	protected static buffersMap: Map<string, Buffer> = new Map();
+	protected static vertexArraysMap: Map<string, VertexArray> = new Map();
 
 	//
 	// properties
@@ -26,8 +29,8 @@ export class ResourceManager {
 	 * @param {string} obj.name Name of ShaderStage object
 	 * @returns {ShaderStage} ShaderStage object
 	 */
-	static getShaderStage({name}: {name: string}): ShaderStage {
-		return ResourceManager.#shaderStagesMap.get(name)!;
+	static getShaderStage({name}: {name: string}): ShaderStage | undefined {
+		return ResourceManager.shaderStagesMap.get(name);
 	}
 
 	/**
@@ -36,8 +39,8 @@ export class ResourceManager {
 	 * @param {string} obj.name Name of Shader object
 	 * @returns {Shader} Shader object
 	 */
-	static getShader({name}: {name: string}): Shader {
-		return ResourceManager.#shadersMap.get(name)!;
+	static getShader({name}: {name: string}): Shader | undefined {
+		return ResourceManager.shadersMap.get(name);
 	}
 
 	/**
@@ -46,8 +49,28 @@ export class ResourceManager {
 	 * @param {string} obj.name Name of Texture2D object
 	 * @returns {Texture2D} Texture2D object
 	 */
-	static getTexture({name}: {name: string}): Texture2D {
-		return ResourceManager.#texturesMap.get(name)!;
+	static getTexture({name}: {name: string}): Texture2D | undefined {
+		return ResourceManager.texturesMap.get(name);
+	}
+
+	/**
+	 * Retrieves Image object
+	 * @param {Object} obj Config object
+	 * @param {string} obj.name Name of Image object
+	 * @returns {HTMLImageElement} Image object
+	 */
+	static getImage({name}: {name: string}): HTMLImageElement | undefined {
+		return ResourceManager.imagesMap.get(name);
+	}
+
+	/**
+	 * Retrieves SpriteAtlas object
+	 * @param {Object} obj Config object
+	 * @param {string} obj.name Name of SpriteAtlas object
+	 * @returns {SpriteAtlas} SpriteAtlas object
+	 */
+	static getAtlas({name}: {name: string}): SpriteAtlas | undefined {
+		return ResourceManager.spriteAtlasesMap.get(name);
 	}
 
 	/**
@@ -56,8 +79,8 @@ export class ResourceManager {
 	 * @param {string} obj.name Name of Buffer object
 	 * @returns {Buffer} Buffer object
 	 */
-	static getBuffer({name}: {name: string}): Buffer {
-		return ResourceManager.#buffersMap.get(name)!;
+	static getBuffer({name}: {name: string}): Buffer | undefined {
+		return ResourceManager.buffersMap.get(name);
 	}
 
 	/**
@@ -66,8 +89,8 @@ export class ResourceManager {
 	 * @param {string} obj.name Name of VertexArray object
 	 * @returns {VertexArray} VertexArray object
 	 */
-	static getVertexArray({name}: {name: string}): VertexArray {
-		return ResourceManager.#vertexArraysMap.get(name)!;
+	static getVertexArray({name}: {name: string}): VertexArray | undefined {
+		return ResourceManager.vertexArraysMap.get(name);
 	}
 
 	//
@@ -96,7 +119,7 @@ export class ResourceManager {
 		// Compile shader stage
 		stage.compile({stageType: type, stageSource: source});
 		// Store shader stage in map
-		ResourceManager.#shaderStagesMap.set(name, stage);
+		ResourceManager.shaderStagesMap.set(name, stage);
 		return stage;
 	}
 
@@ -178,7 +201,7 @@ export class ResourceManager {
 			shader.validate();
 		}
 		// Store shader in map
-		ResourceManager.#shadersMap.set(name, shader);
+		ResourceManager.shadersMap.set(name, shader);
 		return shader;
 	}
 
@@ -278,6 +301,66 @@ export class ResourceManager {
 	// Texture constructors
 	//
 
+	static loadImage({
+		name,
+		source,
+	}: {
+		name: string;
+		source: string;
+	}): Promise<HTMLImageElement> {
+		return new Promise<HTMLImageElement>(resolve => {
+			const data = new Image();
+			data.addEventListener('load', () => resolve(data));
+			data.crossOrigin = '';
+			data.src = source; // reload image by changing it's source
+			ResourceManager.imagesMap.set(name, data);
+		});
+	}
+
+	static createSpriteAtlas({
+		name,
+		source,
+		alpha = false,
+		premultiplyAlpha = false,
+	}: {
+		name: string;
+		source: HTMLImageElement | HTMLCanvasElement;
+		alpha?: boolean;
+		premultiplyAlpha?: boolean;
+	}): SpriteAtlas {
+		const atlas = new SpriteAtlas({
+			source,
+			alpha,
+			premultiplyAlpha,
+		});
+		ResourceManager.spriteAtlasesMap.set(name, atlas);
+		return atlas;
+	}
+
+	static async createSpriteAtlasFromFile({
+		name,
+		imageName,
+		source,
+		alpha = false,
+		premultiplyAlpha = false,
+	}: {
+		name: string;
+		imageName?: string;
+		source: string;
+		alpha?: boolean;
+		premultiplyAlpha?: boolean;
+	}): Promise<SpriteAtlas> {
+		return ResourceManager.createSpriteAtlas({
+			name,
+			source: await ResourceManager.loadImage({
+				name: imageName ?? name,
+				source,
+			}),
+			alpha,
+			premultiplyAlpha,
+		});
+	}
+
 	/**
 	 * Create and register new Texture2D from file
 	 * @param {Object} obj Config object
@@ -288,21 +371,20 @@ export class ResourceManager {
 	 */
 	static createTexture2DFromFile({
 		name,
+		imageName,
 		source,
 		alpha,
 	}: {
 		name: string;
+		imageName: string;
 		source: string;
 		alpha: boolean;
 	}): Promise<Texture2D> {
 		// Fetch followed by createImageBitmap won't work with WebGL2 flipY
 		// Instead provide promise api to older image's onload event
-		return new Promise<HTMLImageElement | HTMLCanvasElement>(resolve => {
-			const data = new Image();
-			data.addEventListener('load', () => resolve(data));
-			data.crossOrigin = '';
-			data.src = source; // reload image by changing it's source
-		}).then(data => ResourceManager.createTexture2D({name, data, alpha}));
+		return this.loadImage({name: imageName, source}).then(data =>
+			ResourceManager.createTexture2D({name, data, alpha})
+		);
 	}
 
 	/**
@@ -341,11 +423,17 @@ export class ResourceManager {
 	static createTexture2D({
 		name,
 		data,
-		alpha,
+		alpha = true,
+		mipmaps = false,
+		flipY = true,
+		premultiplyAlpha = false,
 	}: {
 		name: string;
 		data: HTMLCanvasElement | HTMLImageElement;
-		alpha: boolean;
+		alpha?: boolean;
+		mipmaps?: boolean;
+		flipY?: boolean;
+		premultiplyAlpha?: boolean;
 	}): Texture2D {
 		// Create Texture2D and set it's fields
 		const texture = new Texture2D();
@@ -353,10 +441,13 @@ export class ResourceManager {
 			texture.format = gl().RGBA;
 			texture.internalFormat = gl().RGBA;
 		}
+		texture.mipmaps = mipmaps;
+		texture.flipY = flipY;
+		texture.premultiplyAlpha = premultiplyAlpha;
 		// Populate texture with data
 		texture.generate({source: data});
 		// Store texture in map
-		ResourceManager.#texturesMap.set(name, texture);
+		ResourceManager.texturesMap.set(name, texture);
 		return texture;
 	}
 
@@ -374,17 +465,13 @@ export class ResourceManager {
 	 */
 	static createBuffer({
 		name,
-		bufferType,
-		dataType,
-		usage,
+		dataInfo,
 	}: {
 		name: string;
-		bufferType: number;
-		dataType: number;
-		usage: number;
+		dataInfo: IBufferDataInfo;
 	}): Buffer {
-		const buffer = new Buffer({bufferType, dataType, usage});
-		ResourceManager.#buffersMap.set(name, buffer);
+		const buffer = new Buffer({dataInfo});
+		ResourceManager.buffersMap.set(name, buffer);
 		return buffer;
 	}
 
@@ -408,7 +495,7 @@ export class ResourceManager {
 	}): VertexArray {
 		const vArray = new VertexArray();
 		vArray.setBuffers({buffers});
-		ResourceManager.#vertexArraysMap.set(name, vArray);
+		ResourceManager.vertexArraysMap.set(name, vArray);
 		return vArray;
 	}
 
@@ -421,17 +508,20 @@ export class ResourceManager {
 	 */
 	static clear(): void {
 		// Reclaim memory from WebGL2 references
-		ResourceManager.#shaderStagesMap.forEach(value => value.delete());
-		ResourceManager.#shadersMap.forEach(value => value.delete());
-		ResourceManager.#texturesMap.forEach(value => value.delete());
-		ResourceManager.#buffersMap.forEach(value => value.delete());
-		ResourceManager.#vertexArraysMap.forEach(value => value.delete());
+		ResourceManager.shaderStagesMap.forEach(value => value.delete());
+		ResourceManager.shadersMap.forEach(value => value.delete());
+		ResourceManager.texturesMap.forEach(value => value.delete());
+		ResourceManager.buffersMap.forEach(value => value.delete());
+		ResourceManager.vertexArraysMap.forEach(value => value.delete());
+		ResourceManager.spriteAtlasesMap.forEach(value => value.delete());
 
 		// Clear maps from unused objects
-		ResourceManager.#shaderStagesMap.clear();
-		ResourceManager.#shadersMap.clear();
-		ResourceManager.#texturesMap.clear();
-		ResourceManager.#buffersMap.clear();
-		ResourceManager.#vertexArraysMap.clear();
+		ResourceManager.shaderStagesMap.clear();
+		ResourceManager.shadersMap.clear();
+		ResourceManager.texturesMap.clear();
+		ResourceManager.buffersMap.clear();
+		ResourceManager.vertexArraysMap.clear();
+		ResourceManager.imagesMap.clear();
+		ResourceManager.spriteAtlasesMap.clear();
 	}
 }

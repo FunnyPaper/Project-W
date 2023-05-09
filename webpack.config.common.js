@@ -41,6 +41,20 @@ module.exports = {
 				},
 			},
 			{
+				test: /\.(wav)$/i,
+				type: 'asset/resource',
+				generator: {
+					filename: '[path][name][contenthash][ext]',
+				},
+			},
+			{
+				test: /\.(json)$/i,
+				type: 'asset/resource',
+				generator: {
+					filename: '[path][name][contenthash][ext]',
+				},
+			},
+			{
 				test: /\.glsl$/i,
 				type: 'asset/resource',
 				generator: {

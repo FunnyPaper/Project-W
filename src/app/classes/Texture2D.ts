@@ -1,4 +1,4 @@
-import {gl} from './WebGL2';
+import {context as gl} from './WebGL2';
 
 export class Texture2D {
 	//
@@ -11,6 +11,17 @@ export class Texture2D {
 	magFilter: number = gl().LINEAR;
 	wrapS: number = gl().CLAMP_TO_EDGE;
 	wrapT: number = gl().CLAMP_TO_EDGE;
+	mipmaps: boolean = false;
+	flipY: boolean = true;
+	premultiplyAlpha: boolean = false;
+
+	get width() {
+		return this.source.width;
+	}
+	get height() {
+		return this.source.height;
+	}
+	source!: HTMLCanvasElement | HTMLImageElement;
 	#ID: WebGLTexture | null;
 	static #active: Texture2D | null;
 
@@ -58,7 +69,13 @@ export class Texture2D {
 	}: {
 		source: HTMLCanvasElement | HTMLImageElement;
 	}): Texture2D {
+		this.source = source;
 		this.bind();
+		gl().pixelStorei(gl().UNPACK_FLIP_Y_WEBGL, this.flipY);
+		gl().pixelStorei(
+			gl().UNPACK_PREMULTIPLY_ALPHA_WEBGL,
+			this.premultiplyAlpha
+		);
 		gl().texImage2D(
 			gl().TEXTURE_2D,
 			0,
@@ -77,8 +94,16 @@ export class Texture2D {
 			gl().TEXTURE_MAG_FILTER,
 			this.magFilter
 		);
+		gl().texParameteri(
+			gl().TEXTURE_2D,
+			gl().TEXTURE_MAG_FILTER,
+			gl().NEAREST
+		);
 		gl().texParameteri(gl().TEXTURE_2D, gl().TEXTURE_WRAP_S, this.wrapS);
 		gl().texParameteri(gl().TEXTURE_2D, gl().TEXTURE_WRAP_T, this.wrapT);
+		if (this.mipmaps) {
+			gl().generateMipmap(gl().TEXTURE_2D);
+		}
 		this.unbind();
 		return this;
 	}
@@ -89,11 +114,15 @@ export class Texture2D {
 	 * @param {number} obj.slot Slot used for binding
 	 * @returns {Texture2D} Reference to self
 	 */
-	bind({slot}: {slot: number} = {slot: 0}): Texture2D {
+	bind({slot = 0}: {slot?: number} = {}): Texture2D {
 		Texture2D.#active = this;
 		// every texture can go to 1 of at least 8 slots
 		gl().activeTexture(gl().TEXTURE0 + slot);
 		gl().bindTexture(gl().TEXTURE_2D, this.#ID);
+		if (this.format == gl().RGBA) {
+			gl().enable(gl().BLEND);
+			gl().blendFunc(gl().SRC_ALPHA, gl().ONE_MINUS_SRC_ALPHA);
+		}
 		return this;
 	}
 

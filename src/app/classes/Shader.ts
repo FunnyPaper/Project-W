@@ -1,11 +1,10 @@
 import {ShaderStage} from './ShaderStage';
-import {gl} from './WebGL2';
+import {context as gl} from './WebGL2';
 
 export class Shader {
 	//
 	// fields
 	//
-
 	#ID!: WebGLProgram | null;
 	#vertexArrays: Map<string, number> = new Map();
 	static #active: Shader | null;
@@ -151,6 +150,21 @@ export class Shader {
 	}
 
 	/**
+	 * Set specified uniform of type vec4
+	 * @param {Object} obj Config object
+	 * @param {string} obj.name Uniform name inside shader stage
+	 * @param {TypedArray} obj.value Value to be send to uniform
+	 * @returns {Shader} Reference to self
+	 */
+	setUniform4fv({name, value}: {name: string; value: Float32List}) {
+		if (!this.isActive) {
+			this.bind();
+		}
+		gl().uniform4fv(gl().getUniformLocation(this.#ID!, name), value);
+		return this;
+	}
+
+	/**
 	 * Set specified vertex attribute
 	 * @param {Object} obj Config object
 	 * @param {string} obj.name Attribute name
@@ -163,18 +177,22 @@ export class Shader {
 	 */
 	setAttribute({
 		name,
+		locationOffset = 0,
 		elementsCount,
 		dataType,
 		normalize = false,
 		vertexSize,
 		componentOffset = 0,
+		divisor = 0,
 	}: {
 		name: string;
+		locationOffset?: number;
 		elementsCount: number;
 		dataType: number;
 		normalize?: boolean;
 		vertexSize: number;
 		componentOffset?: number;
+		divisor?: number;
 	}): Shader {
 		let location = 0;
 		if (this.#vertexArrays.has(name)) {
@@ -183,15 +201,17 @@ export class Shader {
 			location = gl().getAttribLocation(this.#ID!, name);
 			this.#vertexArrays.set(name, location);
 		}
-		gl().enableVertexAttribArray(location);
+
+		gl().enableVertexAttribArray(location + locationOffset);
 		gl().vertexAttribPointer(
-			location,
+			location + locationOffset,
 			elementsCount,
 			dataType,
 			normalize,
 			vertexSize,
 			componentOffset
 		);
+		gl().vertexAttribDivisor(location + locationOffset, divisor);
 		return this;
 	}
 }

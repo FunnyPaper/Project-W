@@ -1,4 +1,16 @@
-import {gl} from './WebGL2';
+import {context as gl} from './WebGL2';
+
+export interface IBufferDataInfo {
+	bufferType: number;
+	dataType: number;
+	usage: number;
+	normalize: boolean;
+	vertexSize: number;
+	attribute: {
+		elementsCount: number;
+		elementsOffset: number;
+	}[];
+}
 
 /**
  * WebGL2's buffer representation
@@ -9,10 +21,8 @@ export class Buffer {
 	//
 
 	#instance: WebGLBuffer | null;
-	#data!: BufferSource | null;
-	#usage: number = 0;
-	#bufferType: number = 0;
-	#dataType: number = 0;
+	protected data!: BufferSource | null;
+	#dataInfo!: IBufferDataInfo;
 	static #active: Map<number, Buffer | null> = new Map();
 
 	//
@@ -34,7 +44,7 @@ export class Buffer {
 	 * @returns {boolean}
 	 */
 	get isActive(): boolean {
-		return Buffer.#active.get(this.#bufferType) === this;
+		return Buffer.#active.get(this.#dataInfo.bufferType) === this;
 	}
 
 	/**
@@ -44,10 +54,33 @@ export class Buffer {
 	 * @returns {Buffer} Reference to self
 	 */
 	setData({data}: {data: BufferSource}) {
-		this.#data = data;
+		if (this.data !== data) {
+			this.data = data;
+			this.bind();
+			gl().bufferData(
+				this.#dataInfo.bufferType,
+				this.data,
+				this.#dataInfo.usage
+			);
+			this.unbind();
+		}
+		return this;
+	}
+
+	allocateSpace({bytes}: {bytes: number}) {
 		this.bind();
-		gl().bufferData(this.#bufferType, this.#data, this.#usage);
+		gl().bufferData(this.#dataInfo.bufferType, bytes, this.#dataInfo.usage);
 		this.unbind();
+		return this;
+	}
+
+	updateData({data}: {data: BufferSource}) {
+		if (this.data !== data) {
+			this.data = data;
+			this.bind();
+			gl().bufferSubData(this.#dataInfo.bufferType, 0, this.data);
+			this.unbind();
+		}
 		return this;
 	}
 
@@ -56,52 +89,18 @@ export class Buffer {
 	 * @returns {BufferSource | null} Internal data used by Buffer
 	 */
 	getData(): BufferSource | null {
-		return this.#data;
+		return this.data;
 	}
 
-	/**
-	 * Gets buffer's data type
-	 * @returns {number} GLEnum representing buffer data type
-	 */
-	getDataType(): number {
-		return this.#dataType;
-	}
-
-	/**
-	 * Gets buffer type
-	 * @returns {number} GLEnum representing buffer type
-	 */
-	getBufferType(): number {
-		return this.#bufferType;
-	}
-
-	/**
-	 * Gets buffer usage
-	 * @returns {number} GLEnmu representing buffer usage
-	 */
-	getUsage(): number {
-		return this.#usage;
+	getBufferDataInfo(): IBufferDataInfo {
+		return this.#dataInfo;
 	}
 
 	/**
 	 * Constructs new Buffer object
-	 * @param {Object} obj Config object
-	 * @param {number} obj.bufferType GLEnum representing buffer type
-	 * @param {number} obj.dataType GLEnum representing data type
-	 * @param {number} obj.usage GLEnum representing buffer usage
 	 */
-	constructor({
-		bufferType,
-		dataType,
-		usage,
-	}: {
-		bufferType: number;
-		dataType: number;
-		usage: number;
-	}) {
-		this.#bufferType = bufferType;
-		this.#dataType = dataType;
-		this.#usage = usage;
+	constructor({dataInfo}: {dataInfo: IBufferDataInfo}) {
+		this.#dataInfo = dataInfo;
 		this.#instance = gl().createBuffer();
 	}
 
@@ -110,8 +109,8 @@ export class Buffer {
 	 * @returns {Buffer} Reference to self
 	 */
 	bind() {
-		Buffer.#active.set(this.#bufferType, this);
-		gl().bindBuffer(this.#bufferType, this.#instance);
+		Buffer.#active.set(this.#dataInfo.bufferType, this);
+		gl().bindBuffer(this.#dataInfo.bufferType, this.#instance);
 		return this;
 	}
 
@@ -121,8 +120,8 @@ export class Buffer {
 	 */
 	unbind() {
 		if (this.isActive) {
-			Buffer.#active.set(this.#bufferType, null);
-			gl().bindBuffer(this.#bufferType, null);
+			Buffer.#active.set(this.#dataInfo.bufferType, null);
+			gl().bindBuffer(this.#dataInfo.bufferType, null);
 		}
 		return this;
 	}
